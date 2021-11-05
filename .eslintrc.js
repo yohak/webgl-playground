@@ -11,7 +11,7 @@ module.exports = {
     "plugin:react/recommended",
     "plugin:prettier/recommended",
   ],
-  plugins: ["@typescript-eslint", "react", "react-hooks", "no-autofix", "import"],
+  plugins: ["@typescript-eslint", "react", "react-hooks", "no-autofix", "import", "@emotion"],
   env: {
     browser: true,
     node: true,

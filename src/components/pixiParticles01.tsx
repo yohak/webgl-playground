@@ -1,7 +1,21 @@
+import css from "@emotion/css";
 import * as PIXI from "pixi.js";
 import React, { FC, useEffect, useRef } from "react";
 
 export type Pixi01Props = {};
+
+const canvasCSS = css`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  @media (min-width: 420px) {
+    height: 100%;
+  }
+  @media (max-width: 420px) {
+    height: 100vh;
+  }
+`;
 
 export const PixiParticles01: FC<Pixi01Props> = ({}) => {
   const appCanvas = useRef<HTMLDivElement>();
@@ -25,7 +39,7 @@ export const PixiParticles01: FC<Pixi01Props> = ({}) => {
       app.destroy(true);
     };
   }, []);
-  return <div ref={appCanvas} style={{ width: 375, height: 665 }} />;
+  return <div ref={appCanvas} css={canvasCSS} />;
 };
 
 class Emitter {

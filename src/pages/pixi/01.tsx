@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { FC } from "react";
+import { MobileWrapper } from "../../components/MobileWrapper";
 
 const NoSSR = dynamic<any>(
   () => import("../../components/pixiParticles01").then((m) => m.PixiParticles01),
@@ -10,18 +11,9 @@ const NoSSR = dynamic<any>(
 
 const Pixi01: FC = () => {
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#CCCCCC",
-      }}
-    >
+    <MobileWrapper>
       <NoSSR />
-    </div>
+    </MobileWrapper>
   );
 };
 

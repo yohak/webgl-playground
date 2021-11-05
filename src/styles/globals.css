@@ -11,6 +11,10 @@ html{
   overflow: hidden;
 }
 
+canvas{
+  display: block;
+}
+
 a {
   color: inherit;
   text-decoration: none;
