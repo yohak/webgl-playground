@@ -1,8 +1,9 @@
 import css from "@emotion/css";
 import * as PIXI from "pixi.js";
-import React, { FC, useEffect, useRef } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
+import { ParticleParams } from "./pixiParticles01GUI";
 
-export type Pixi01Props = {};
+export type Pixi01Props = { params: ParticleParams };
 
 const canvasCSS = css`
   position: absolute;
@@ -17,9 +18,18 @@ const canvasCSS = css`
   }
 `;
 
-export const PixiParticles01: FC<Pixi01Props> = ({}) => {
+export const PixiParticles01: FC<Pixi01Props> = ({ params }) => {
   const appCanvas = useRef<HTMLDivElement>();
+  const [pixiApp, setPixiApp] = useState<PIXI.Application>();
+
   useEffect(() => {
+    const destroy = () => {
+      if (pixiApp) {
+        console.log("destroy");
+        pixiApp.destroy(true);
+      }
+    };
+    destroy();
     const canvas: HTMLDivElement = appCanvas.current;
     const bound = canvas.getBoundingClientRect();
     const app = new PIXI.Application({
@@ -28,17 +38,18 @@ export const PixiParticles01: FC<Pixi01Props> = ({}) => {
       height: bound.height,
       backgroundColor: 0xffffff,
     });
+    setPixiApp(app);
     canvas.appendChild(app.view);
-    const emitter: Emitter = new Emitter(app);
+    const emitter: Emitter = new Emitter(app, params);
     app.ticker.add(() => {
       emitter.update();
     });
 
-    return () => {
-      console.log("destory");
-      app.destroy(true);
-    };
-  }, []);
+    // return () => {
+    //   console.log("unmount");
+    //   destroy();
+    // };
+  }, [params]);
   return <div ref={appCanvas} css={canvasCSS} />;
 };
 
@@ -47,14 +58,19 @@ class Emitter {
   private deadPool: Particle[] = [];
   private readonly app: PIXI.Application;
   private readonly birthTime: number;
+  private readonly birthRate;
   private lastBirthGiven: number = 0;
-  private birthRate = 100;
-  constructor(app: PIXI.Application) {
+  private readonly params: ParticleParams;
+
+  constructor(app: PIXI.Application, params: ParticleParams) {
     const now = new Date().getTime();
     this.birthTime = now;
     this.app = app;
+    this.birthRate = params.birthFreq;
+    this.params = params;
     this.giveBirth(now);
   }
+
   update() {
     const now = new Date().getTime();
     if (now - this.lastBirthGiven > this.birthRate) {
@@ -71,7 +87,7 @@ class Emitter {
     this.lastBirthGiven = now;
     const stage = this.app.stage;
     const screen = this.app.screen;
-    const particle = this.deadPool.length ? this.deadPool.pop() : new Particle();
+    const particle = this.deadPool.length ? this.deadPool.pop() : new Particle(this.params);
     const x = Math.random() * (screen.width + 100) - 100;
     const y = screen.height + 50;
     //
@@ -86,29 +102,37 @@ class Particle {
   get alive(): boolean {
     return this._alive;
   }
+
   readonly container: PIXI.Container;
   private _alive: boolean = true;
   private birthTime: number;
   private lastUpdate: number;
   //
-  private waveFrequency: number;
+  private waveSize: number;
   private waveStart: number;
+  private waveFreq: number;
   private baseAngle: number;
   private baseSpeed: number;
+  //
+  private angles: number[];
 
-  constructor() {
+  constructor(private params: ParticleParams) {
     const container = new PIXI.Container();
     const circle = new PIXI.Graphics();
     container.addChild(circle);
-    circle.beginFill(0x00aee4, Math.random() * 0.3 + 0.4);
-    circle.drawCircle(0, 0, Math.random() * 10 + 10);
+    circle.beginFill(
+      parseInt(params.color.slice(1), 16),
+      Math.random() * params.opacityRand + params.opacityBase
+    );
+    circle.drawCircle(0, 0, Math.random() * params.sizeRand + params.sizeBase);
     circle.endFill();
     const bf = new PIXI.filters.BlurFilter();
-    bf.blur = 16;
+    bf.blur = params.blur;
     // bf.multisample = PIXI.MSAA_QUALITY.HIGH;
     circle.filters = [bf];
     circle.cacheAsBitmap = true;
     this.container = container;
+    this.angles = [params.angleA, params.angleB, params.angleC];
   }
 
   init(now: number, x: number, y: number) {
@@ -117,32 +141,35 @@ class Particle {
     this.container.x = x;
     this.container.y = y;
     //
-    this.waveFrequency = Math.random() * 5 + 5;
+    const params = this.params;
+    this.waveSize = Math.random() * params.waveSizeRand + params.waveSizeBase;
+    this.waveFreq = Math.random() * params.waveFreqRand + params.waveFreqBase;
     this.waveStart = Math.random() * degreeToRadian(180);
-    this.baseAngle = pickAngle();
-    this.baseSpeed = Math.random() * 2 + 2;
+    this.baseAngle = this.pickAngle();
+    this.baseSpeed = Math.random() * params.speedRand + params.speedBase;
   }
 
   update(now: number) {
     const age = now - this.birthTime;
-    const buoyancy = age / 1000;
+    const buoyancy = age / this.params.buoyancyRatio;
     const velocity = ((now - this.lastUpdate) / 16) * this.baseSpeed + buoyancy;
     const container = this.container;
     const circle = container.getChildAt(0);
     const angle = degreeToRadian(this.baseAngle + 90);
     container.y -= Math.sin(angle) * velocity;
     container.x -= Math.cos(angle) * velocity;
-    circle.x = Math.sin((age / 1000) * 3 + this.waveStart) * this.waveFrequency;
+    circle.x = Math.sin((age / 1000) * this.waveFreq + this.waveStart) * this.waveSize;
     //
     this.lastUpdate = now;
     this._alive = container.y >= -100;
+  }
+
+  private pickAngle() {
+    const arr = this.angles;
+    return arr[Math.floor(Math.random() * arr.length)];
   }
 }
 
 const degreeToRadian = (deg: number): number => {
   return (deg * Math.PI) / 180;
-};
-const pickAngle = (): number => {
-  const arr = [0, 2, 5];
-  return arr[Math.floor(Math.random() * arr.length)];
 };

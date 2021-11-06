@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
-import { FC } from "react";
+import { FC, useState } from "react";
 import { MobileWrapper } from "../../components/MobileWrapper";
+import { defaultParticleParams, PixiParticles01GUI } from "../../components/pixiParticles01GUI";
 
 const NoSSR = dynamic<any>(
   () => import("../../components/pixiParticles01").then((m) => m.PixiParticles01),
@@ -10,10 +11,15 @@ const NoSSR = dynamic<any>(
 );
 
 const Pixi01: FC = () => {
+  const [params, setParams] = useState(defaultParticleParams);
+
   return (
-    <MobileWrapper>
-      <NoSSR />
-    </MobileWrapper>
+    <>
+      <MobileWrapper>
+        <NoSSR params={params} />
+      </MobileWrapper>
+      <PixiParticles01GUI setParams={setParams} />
+    </>
   );
 };
 
