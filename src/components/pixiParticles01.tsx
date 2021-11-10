@@ -37,6 +37,8 @@ export const PixiParticles01: FC<Pixi01Props> = ({ params }) => {
       width: bound.width,
       height: bound.height,
       backgroundColor: 0xffffff,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true,
     });
     setPixiApp(app);
     canvas.appendChild(app.view);

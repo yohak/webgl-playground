@@ -1,0 +1,97 @@
+import { backgroundImages } from "polished";
+import React, { FC, useEffect, useRef } from "react";
+import * as THREE from "three";
+import { LineBasicMaterial } from "three";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { TexturePass } from "three/examples/jsm/postprocessing/TexturePass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
+import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
+
+export type ThreeParticles01Props = {};
+
+export const ThreeParticles01: FC<ThreeParticles01Props> = ({}) => {
+  const wrapperRef = useRef<HTMLCanvasElement>();
+
+  useEffect(() => {
+    console.log("init");
+    const destory = init(wrapperRef.current);
+    return () => {
+      console.log("unmount");
+      destory();
+    };
+  }, []);
+  return <canvas ref={wrapperRef} style={backgroundImages(`linear-gradient(#FFFFFF, #000000)`)} />;
+};
+
+const init = (canvas: HTMLCanvasElement): (() => void) => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const fov = 75;
+  const near = 10;
+  const far = 10000;
+  const aspect = 1;
+  //
+  const renderer = new THREE.WebGLRenderer({ canvas });
+  const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+  camera.aspect = canvas.width / canvas.height;
+  camera.updateProjectionMatrix();
+  const scene = new THREE.Scene();
+  //
+  const composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  renderPass.clear = false;
+  const resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const bloomPass = new UnrealBloomPass(resolution, 0.6, 0.5, 0.5);
+  const texturePass = new TexturePass(null, 1);
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.load("/assets/background.jpg", function (map) {
+    texturePass.map = map;
+  });
+  const copyPass = new ShaderPass(CopyShader);
+
+  composer.addPass(texturePass);
+  composer.addPass(renderPass);
+  composer.addPass(copyPass);
+  composer.addPass(bloomPass);
+
+  //
+  let animationRequest: number;
+  const render = () => {
+    // renderer.render(scene, camera);
+    composer.render();
+    animationRequest = requestAnimationFrame(render);
+  };
+  animationRequest = requestAnimationFrame(render);
+  //
+  const tempLight = new THREE.AmbientLight(0x404040);
+  scene.add(tempLight);
+  //
+  const loader = new OBJLoader();
+  loader.load("/assets/gem.obj", (obj) => {
+    const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
+    // scene.add(mesh);
+    const wireframe = new THREE.WireframeGeometry(mesh.geometry);
+    const line = new THREE.LineSegments(wireframe);
+    const mat: LineBasicMaterial = line.material as LineBasicMaterial;
+    mat.linewidth = 2;
+    mat.depthTest = false;
+    mat.opacity = 0.3;
+    mat.color = new THREE.Color("#f1acbc");
+    mat.transparent = true;
+    mat.blending = THREE.AdditiveBlending;
+    scene.add(line);
+    //
+    camera.position.z = 200;
+  });
+
+  //
+  return () => {
+    renderer.dispose();
+    cancelAnimationFrame(animationRequest);
+    console.log("destroy");
+  };
+};
