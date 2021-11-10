@@ -1,6 +1,7 @@
 import css from "@emotion/css";
 import * as PIXI from "pixi.js";
 import React, { FC, useEffect, useRef, useState } from "react";
+import { degreeToRadian } from "yohak-tools/dist/geom/angles";
 import { ParticleParams } from "./pixiParticles01GUI";
 
 export type Pixi01Props = { params: ParticleParams };
@@ -171,7 +172,3 @@ class Particle {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 }
-
-const degreeToRadian = (deg: number): number => {
-  return (deg * Math.PI) / 180;
-};

@@ -9,7 +9,9 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { TexturePass } from "three/examples/jsm/postprocessing/TexturePass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
-import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
+import { rangeMap } from "yohak-tools";
+import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
+import { schedulingPolicy } from "cluster";
 
 export type ThreeParticles01Props = {};
 
@@ -58,11 +60,31 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   composer.addPass(copyPass);
   composer.addPass(bloomPass);
 
+  let cursorX = 0;
+  let cursorY = 0;
+  let targetRotationY = 0;
+  let targetRotationX = 0;
+  let objGroup: THREE.Group;
+  const onMouseMove = (e: MouseEvent) => {
+    cursorX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+    cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+    targetRotationY = rangeMap([-1, 1], [90, -90], cursorX);
+    targetRotationX = rangeMap([-1, 1], [15, -15], cursorY);
+  };
+  canvas.addEventListener("mousemove", onMouseMove);
+
   //
   let animationRequest: number;
   const render = () => {
     // renderer.render(scene, camera);
     composer.render();
+    if (objGroup) {
+      const rotationY = radianToDegree(objGroup.rotation.y);
+      const rotationX = radianToDegree(objGroup.rotation.x);
+      objGroup.rotation.y = degreeToRadian(rotationY + (targetRotationY - rotationY) / 50);
+      objGroup.rotation.x = degreeToRadian(rotationX + (targetRotationX - rotationX) / 50);
+    }
+    //
     animationRequest = requestAnimationFrame(render);
   };
   animationRequest = requestAnimationFrame(render);
@@ -72,6 +94,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   //
   const loader = new OBJLoader();
   loader.load("/assets/gem.obj", (obj) => {
+    objGroup = new THREE.Group();
     const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
     // scene.add(mesh);
     const wireframe = new THREE.WireframeGeometry(mesh.geometry);
@@ -83,14 +106,29 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     mat.color = new THREE.Color("#f1acbc");
     mat.transparent = true;
     mat.blending = THREE.AdditiveBlending;
-    scene.add(line);
+    objGroup.add(line);
+    //
+    const pointGeom = mesh.geometry.clone();
+    const pointMat = new THREE.PointsMaterial();
+    pointMat.color.setHex(0xffffff);
+    pointMat.size = 1;
+    pointMat.depthTest = false;
+    mat.transparent = true;
+    mat.blending = THREE.AdditiveBlending;
+    const points = new THREE.Points(pointGeom, pointMat);
+    objGroup.add(points);
+    //
+    scene.add(objGroup);
     //
     camera.position.z = 200;
+    camera.position.y = 40;
+    camera.lookAt(objGroup.position);
   });
 
   //
   return () => {
     renderer.dispose();
+    canvas.removeEventListener("mousemove", onMouseMove);
     cancelAnimationFrame(animationRequest);
     console.log("destroy");
   };
