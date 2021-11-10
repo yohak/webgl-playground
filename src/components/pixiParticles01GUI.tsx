@@ -40,6 +40,27 @@ export const defaultParticleParams: ParticleParams = {
   speedRand: 2,
   buoyancyRatio: 1000,
 };
+
+export const params2: ParticleParams = {
+  birthFreq: 250,
+  color: "#00aee4",
+  opacityBase: 0.7,
+  opacityRand: 0.5,
+  sizeBase: 1.5,
+  sizeRand: 4,
+  blur: 12,
+  waveSizeBase: 5,
+  waveSizeRand: 30,
+  waveFreqBase: 1,
+  waveFreqRand: 0.5,
+  angleA: 15,
+  angleB: -24,
+  angleC: 7.826086956521742,
+  speedBase: 0.1,
+  speedRand: 0.4,
+  buoyancyRatio: 2000,
+};
+
 export type PixiParticles01GUIProps = {
   setParams: Dispatch<SetStateAction<ParticleParams>>;
 };
