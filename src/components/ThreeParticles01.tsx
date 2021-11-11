@@ -11,7 +11,6 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
-import { schedulingPolicy } from "cluster";
 
 export type ThreeParticles01Props = {};
 
@@ -20,10 +19,10 @@ export const ThreeParticles01: FC<ThreeParticles01Props> = ({}) => {
 
   useEffect(() => {
     console.log("init");
-    const destory = init(wrapperRef.current);
+    const destroy = init(wrapperRef.current);
     return () => {
       console.log("unmount");
-      destory();
+      destroy();
     };
   }, []);
   return <canvas ref={wrapperRef} style={backgroundImages(`linear-gradient(#FFFFFF, #000000)`)} />;
@@ -59,7 +58,19 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   composer.addPass(renderPass);
   composer.addPass(copyPass);
   composer.addPass(bloomPass);
-
+  //
+  const onResizeWindow = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = w;
+    canvas.height = h;
+    // renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+  window.addEventListener("resize", onResizeWindow);
+  //
   let cursorX = 0;
   let cursorY = 0;
   let targetRotationY = 0;
@@ -128,6 +139,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   //
   return () => {
     renderer.dispose();
+    window.removeEventListener("resize", onResizeWindow);
     canvas.removeEventListener("mousemove", onMouseMove);
     cancelAnimationFrame(animationRequest);
     console.log("destroy");
