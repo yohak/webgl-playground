@@ -12264,7 +12264,7 @@ tweakpane@^3.0.5:
   resolved "https://registry.yarnpkg.com/tweakpane/-/tweakpane-3.0.5.tgz#0dc76ac129b4b771dc6491558aec6e5516984946"
   integrity sha512-HivFjOs510RbZSNgxv4x5LVFsHFN1ryfgpOp3n6wrgg1jLxbdlA/UTIbTLi/DYH7g76rGQqW/+IRmHPfjIujpQ==
 
-tween24@^0.9.3:
+tween24@^0.9.11:
   version "0.9.11"
   resolved "https://registry.yarnpkg.com/tween24/-/tween24-0.9.11.tgz#fbc852c1eb2b2ba51b2103b46dbb8cd0dcf2e4e0"
   integrity sha512-1DWeVbBVcAWN9gPNdkJcROwI7qwg4TDn6sLoX8KePlFAVbTVv/ymlmG5WFzBvuDsviN8fOxKFRPKkuz1CSwpTQ==
@@ -13129,10 +13129,10 @@ yocto-queue@^0.1.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-0.1.0.tgz#0294eb3dee05028d31ee1a5fa2c556a6aaf10a1b"
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
-yohak-tools@^0.1.10:
-  version "0.1.10"
-  resolved "https://registry.yarnpkg.com/yohak-tools/-/yohak-tools-0.1.10.tgz#ac3f069d28ad13acca54333476562f100cab97ac"
-  integrity sha512-1D07PhzP9+w/fBoPPdkz2lIuftiFAKhy2HVBeT65hRDfp9j1RvHr8PL3no1KwMa9yUbB0elQPF/awG35rubwoA==
+yohak-tools@^0.1.11:
+  version "0.1.11"
+  resolved "https://registry.yarnpkg.com/yohak-tools/-/yohak-tools-0.1.11.tgz#3c831af7bed852368c19fdf2d17b745ae4e01465"
+  integrity sha512-Mwj7/gwhWaTGz8mWdn9BsiScYd6ValAdbdt51yNyVE4OHyZxtfT6sBvjsQ1l/wiqnq+WMTd5QTX/99lcNLH+cA==
   dependencies:
     change-case "^4.1.2"
 
