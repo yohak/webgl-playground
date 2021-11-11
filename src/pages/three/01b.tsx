@@ -2,7 +2,7 @@ import dynamic from "next/dynamic";
 import React, { FC } from "react";
 
 const NoSSR = dynamic<any>(
-  () => import("../../components/ThreeParticles01").then((m) => m.ThreeParticles01),
+  () => import("../../components/ThreeParticles01b").then((m) => m.ThreeParticles01b),
   {
     ssr: false,
   }

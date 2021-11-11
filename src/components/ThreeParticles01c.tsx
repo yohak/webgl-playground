@@ -12,9 +12,9 @@ import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 
-export type ThreeParticles03Props = {};
+export type ThreeParticles01cProps = {};
 
-export const ThreeParticles03: FC<ThreeParticles03Props> = ({}) => {
+export const ThreeParticles01c: FC<ThreeParticles01cProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
