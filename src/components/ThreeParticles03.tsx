@@ -12,9 +12,9 @@ import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 
-export type ThreeParticles02Props = {};
+export type ThreeParticles03Props = {};
 
-export const ThreeParticles02: FC<ThreeParticles02Props> = ({}) => {
+export const ThreeParticles03: FC<ThreeParticles03Props> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -79,7 +79,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const onMouseMove = (e: MouseEvent) => {
     cursorX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
     cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-    targetRotationY = rangeMap([-1, 1], [90, -90], cursorX);
+    targetRotationY = rangeMap([-1, 1], [75, -75], cursorX);
     targetRotationX = rangeMap([-1, 1], [15, -15], cursorY);
   };
   canvas.addEventListener("mousemove", onMouseMove);
@@ -107,18 +107,17 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   loader.load("/assets/gem2.obj", (obj) => {
     objGroup = new THREE.Group();
     const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
-    // scene.add(mesh);
     const wireframe = new THREE.WireframeGeometry(mesh.geometry);
     const line = new THREE.LineSegments(wireframe);
     const mat: LineBasicMaterial = line.material as LineBasicMaterial;
-    mat.linewidth = 2;
+    mat.linewidth = 1;
     mat.depthTest = false;
-    mat.opacity = 0.3;
+    mat.opacity = 0.1;
     mat.color = new THREE.Color("#f1acbc");
     mat.transparent = true;
     mat.blending = THREE.AdditiveBlending;
-    // objGroup.add(line);
-    //
+    objGroup.add(line);
+    // //
     const pointGeom = mesh.geometry.clone();
     const pointMat = new THREE.PointsMaterial();
     pointMat.color.setHex(0xffffff);
@@ -126,10 +125,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     pointMat.depthTest = false;
     mat.transparent = true;
     mat.blending = THREE.AdditiveBlending;
-    console.log(pointGeom);
     const points = new THREE.Points(pointGeom, pointMat);
     objGroup.add(points);
-    //
+    // //
     scene.add(objGroup);
     //
     camera.position.z = 200;
