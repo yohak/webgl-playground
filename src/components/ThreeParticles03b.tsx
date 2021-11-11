@@ -1,7 +1,6 @@
 import { backgroundImages } from "polished";
 import React, { FC, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -15,9 +14,9 @@ import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
 
-export type ThreeParticles03aProps = {};
+export type ThreeParticles03bProps = {};
 
-export const ThreeParticles03a: FC<ThreeParticles03aProps> = ({}) => {
+export const ThreeParticles03b: FC<ThreeParticles03bProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -105,23 +104,45 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   particleMat.depthTest = false;
   const particles = new THREE.Points(particleGeom, particleMat);
   objGroup.add(particles);
+  //
 
-  const onClickCanvas = () => {
-    const targetPositions = positions.map(() => Math.random() * 150 - 75);
+  const paths: string[] = ["/assets/gem2.obj", "/assets/torso.obj", "/assets/steering.obj"];
+  let loadCount = 0;
+  let isMorphing: boolean = false;
+  let shapeIndex = 0;
+  const onLoadItem = () => {
+    loadCount++;
+    if (loadCount < paths.length) return;
+    morphParticles(shapes[shapeIndex].getVertices());
+  };
+  const shapes: ShapeVertices[] = paths.map(
+    (p) => new ShapeVertices(p, PARTICLE_COUNTS, onLoadItem)
+  );
+
+  const morphParticles = (targetPositions: number[]) => {
+    if (isMorphing) return;
+    isMorphing = true;
     const originalPositions = particleGeom.getAttribute("position").array;
     let newPositions: number[];
     const obj = { percent: 0 };
-    const tween = Tween24.tween(obj, 1, Ease24._4_QuartInOut, { percent: 1 });
+    const tween = Tween24.tween(obj, 1, Ease24._6_ExpoInOut, { percent: 1 });
     tween.onUpdate(() => {
       newPositions = targetPositions.map((v, i) =>
         valueBetween(originalPositions[i], v, obj.percent)
       );
       particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
     });
+    tween.onComplete(() => (isMorphing = false));
     tween.play();
   };
-  canvas.addEventListener("click", onClickCanvas);
 
+  const onClickCanvas = () => {
+    if (isMorphing) return;
+    shapeIndex++;
+    if (shapeIndex >= shapes.length) shapeIndex = 0;
+    morphParticles(shapes[shapeIndex].getVertices());
+  };
+  canvas.addEventListener("click", onClickCanvas);
   //
   let animationRequest: number;
   const render = () => {
@@ -149,6 +170,24 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   };
 };
 
-class ShapeVerticies {
-  constructor(path: string) {}
+class ShapeVertices {
+  private readonly vertices: number[] = [];
+
+  constructor(path: string, particleCounts: number, onLoadComplete: () => void) {
+    const loader = new OBJLoader();
+    loader.load(path, (obj) => {
+      const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
+      const tempPosition = new THREE.Vector3();
+      const sampler = new MeshSurfaceSampler(mesh).build();
+      for (let i = 0; i < particleCounts; i++) {
+        sampler.sample(tempPosition);
+        this.vertices.push(tempPosition.x, tempPosition.y, tempPosition.z);
+      }
+      onLoadComplete();
+    });
+  }
+
+  getVertices() {
+    return [...this.vertices];
+  }
 }
