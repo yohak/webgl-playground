@@ -49,7 +49,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const renderPass = new RenderPass(scene, camera);
   renderPass.clear = false;
   const resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
-  const bloomPass = new UnrealBloomPass(resolution, 0.3, 0.5, 0.7);
+  const bloomPass = new UnrealBloomPass(resolution, 0, 0.5, 0.7);
   const texturePass = new TexturePass(null, 1);
   const textureLoader = new THREE.TextureLoader();
   textureLoader.load("/assets/background.jpg", function (map) {
