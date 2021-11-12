@@ -1,22 +1,20 @@
 import { backgroundImages } from "polished";
 import React, { FC, useEffect, useRef } from "react";
 import * as THREE from "three";
+import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { TexturePass } from "three/examples/jsm/postprocessing/TexturePass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
-import { Ease24, Tween24 } from "tween24";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
-import { valueBetween } from "yohak-tools/dist/geom/value-between";
 
-export type ThreeParticles03cProps = {};
+export type ThreeParticles01dProps = {};
 
-export const ThreeParticles03c: FC<ThreeParticles03cProps> = ({}) => {
+export const ThreeParticles01d: FC<ThreeParticles01dProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -48,7 +46,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const renderPass = new RenderPass(scene, camera);
   renderPass.clear = false;
   const resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
-  const bloomPass = new UnrealBloomPass(resolution, 0.3, 0.5, 0.7);
+  const bloomPass = new UnrealBloomPass(resolution, 0.0, 0.5, 0.5);
   const texturePass = new TexturePass(null, 1);
   const textureLoader = new THREE.TextureLoader();
   textureLoader.load("/assets/background.jpg", function (map) {
@@ -73,16 +71,11 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   };
   window.addEventListener("resize", onResizeWindow);
   //
-  const objGroup: THREE.Group = new THREE.Group();
-  scene.add(objGroup);
-  camera.position.z = 200;
-  camera.position.y = 40;
-  camera.lookAt(objGroup.position);
-  //
   let cursorX = 0;
   let cursorY = 0;
   let targetRotationY = 0;
   let targetRotationX = 0;
+  let objGroup: THREE.Group;
   const onMouseMove = (e: MouseEvent) => {
     cursorX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
     cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
@@ -91,60 +84,6 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   };
   canvas.addEventListener("mousemove", onMouseMove);
 
-  //
-
-  const paths: string[] = ["/assets/heart1.obj", "/assets/woman1.obj", "/assets/steering.obj"];
-  let particleGeom: THREE.BufferGeometry;
-  let loadCount = 0;
-  let isMorphing: boolean = false;
-  let shapeIndex = 0;
-  const onLoadItem = () => {
-    loadCount++;
-    if (loadCount < paths.length) return;
-    const maxPositions = Math.max(...shapes.map((r) => r.getVertices().length));
-    shapes.forEach((shape) => shape.fillVertices(maxPositions));
-    //
-    particleGeom = new THREE.BufferGeometry();
-    const positions: number[] = [];
-    for (let i = 0; i < maxPositions / 3; i++) {
-      positions.push(Math.random() * 30 - 15, Math.random() * 30 - 15, Math.random() * 30 - 15);
-    }
-    particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-    const particleMat = new THREE.PointsMaterial();
-    particleMat.size = 1;
-    particleMat.color.setHex(0xffffff);
-    particleMat.depthTest = false;
-    const particles = new THREE.Points(particleGeom, particleMat);
-    objGroup.add(particles);
-    //
-    morphParticles(shapes[shapeIndex].getVertices());
-  };
-  const shapes: ShapeVertices[] = paths.map((p) => new ShapeVertices(p, onLoadItem));
-
-  const morphParticles = (targetPositions: number[]) => {
-    if (isMorphing) return;
-    isMorphing = true;
-    const originalPositions = particleGeom.getAttribute("position").array;
-    let newPositions: number[];
-    const obj = { percent: 0 };
-    const tween = Tween24.tween(obj, 1, Ease24._6_ExpoInOut, { percent: 1 });
-    tween.onUpdate(() => {
-      newPositions = targetPositions.map((v, i) =>
-        valueBetween(originalPositions[i], v, obj.percent)
-      );
-      particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
-    });
-    tween.onComplete(() => (isMorphing = false));
-    tween.play();
-  };
-
-  const onClickCanvas = () => {
-    if (isMorphing) return;
-    shapeIndex++;
-    if (shapeIndex >= shapes.length) shapeIndex = 0;
-    morphParticles(shapes[shapeIndex].getVertices());
-  };
-  canvas.addEventListener("click", onClickCanvas);
   //
   let animationRequest: number;
   const render = () => {
@@ -160,40 +99,48 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     animationRequest = requestAnimationFrame(render);
   };
   animationRequest = requestAnimationFrame(render);
+  //
+  const tempLight = new THREE.AmbientLight(0x404040);
+  scene.add(tempLight);
+  //
+  const loader = new OBJLoader();
+  loader.load("/assets/woman1.obj", (obj) => {
+    objGroup = new THREE.Group();
+    const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
+    const wireframe = new THREE.WireframeGeometry(mesh.geometry);
+    const line = new THREE.LineSegments(wireframe);
+    const mat: LineBasicMaterial = line.material as LineBasicMaterial;
+    mat.linewidth = 1;
+    mat.depthTest = false;
+    mat.opacity = 0.3;
+    mat.color = new THREE.Color("#f1acbc");
+    mat.transparent = true;
+    mat.blending = THREE.AdditiveBlending;
+    objGroup.add(line);
+    // //
+    const pointGeom = mesh.geometry.clone();
+    const pointMat = new THREE.PointsMaterial();
+    pointMat.color.setHex(0xffffff);
+    pointMat.size = 1.5;
+    pointMat.depthTest = false;
+    mat.transparent = true;
+    mat.blending = THREE.AdditiveBlending;
+    const points = new THREE.Points(pointGeom, pointMat);
+    objGroup.add(points);
+    // //
+    scene.add(objGroup);
+    //
+    camera.position.z = 200;
+    camera.position.y = 40;
+    camera.lookAt(objGroup.position);
+  });
 
   //
   return () => {
     renderer.dispose();
     window.removeEventListener("resize", onResizeWindow);
     canvas.removeEventListener("mousemove", onMouseMove);
-    canvas.removeEventListener("click", onClickCanvas);
     cancelAnimationFrame(animationRequest);
     console.log("destroy");
   };
 };
-
-class ShapeVertices {
-  private readonly vertices: number[] = [];
-
-  constructor(path: string, onLoadComplete: () => void) {
-    const loader = new OBJLoader();
-    loader.load(path, (obj) => {
-      const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
-      const geom = mesh.geometry;
-      const arr = geom.getAttribute("position").array;
-      for (let i = 0; i < arr.length; i++) {
-        this.vertices.push(arr[i]);
-      }
-      onLoadComplete();
-    });
-  }
-
-  getVertices() {
-    return [...this.vertices];
-  }
-  fillVertices(until: number) {
-    while (this.vertices.length <= until) {
-      this.vertices.push(0);
-    }
-  }
-}

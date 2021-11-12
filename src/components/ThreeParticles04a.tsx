@@ -1,6 +1,7 @@
 import { backgroundImages } from "polished";
 import React, { FC, useEffect, useRef } from "react";
 import * as THREE from "three";
+import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -14,9 +15,9 @@ import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
 
-export type ThreeParticles03cProps = {};
+export type ThreeParticles04aProps = {};
 
-export const ThreeParticles03c: FC<ThreeParticles03cProps> = ({}) => {
+export const ThreeParticles04a: FC<ThreeParticles04aProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -93,57 +94,39 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
 
   //
 
-  const paths: string[] = ["/assets/heart1.obj", "/assets/woman1.obj", "/assets/steering.obj"];
+  const paths: string[] = [
+    "/assets/heart1.obj",
+    "/assets/heart2.obj",
+    "/assets/heart3.obj",
+    "/assets/woman1.obj",
+    "/assets/woman2.obj",
+    "/assets/woman3.obj",
+  ];
   let particleGeom: THREE.BufferGeometry;
   let loadCount = 0;
-  let isMorphing: boolean = false;
-  let shapeIndex = 0;
+  let shapeIndex: number = 0;
+  let currentShape: ShapeVertices;
   const onLoadItem = () => {
     loadCount++;
     if (loadCount < paths.length) return;
-    const maxPositions = Math.max(...shapes.map((r) => r.getVertices().length));
-    shapes.forEach((shape) => shape.fillVertices(maxPositions));
-    //
-    particleGeom = new THREE.BufferGeometry();
-    const positions: number[] = [];
-    for (let i = 0; i < maxPositions / 3; i++) {
-      positions.push(Math.random() * 30 - 15, Math.random() * 30 - 15, Math.random() * 30 - 15);
-    }
-    particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-    const particleMat = new THREE.PointsMaterial();
-    particleMat.size = 1;
-    particleMat.color.setHex(0xffffff);
-    particleMat.depthTest = false;
-    const particles = new THREE.Points(particleGeom, particleMat);
-    objGroup.add(particles);
-    //
-    morphParticles(shapes[shapeIndex].getVertices());
+    showItem(0);
   };
   const shapes: ShapeVertices[] = paths.map((p) => new ShapeVertices(p, onLoadItem));
 
-  const morphParticles = (targetPositions: number[]) => {
-    if (isMorphing) return;
-    isMorphing = true;
-    const originalPositions = particleGeom.getAttribute("position").array;
-    let newPositions: number[];
-    const obj = { percent: 0 };
-    const tween = Tween24.tween(obj, 1, Ease24._6_ExpoInOut, { percent: 1 });
-    tween.onUpdate(() => {
-      newPositions = targetPositions.map((v, i) =>
-        valueBetween(originalPositions[i], v, obj.percent)
-      );
-      particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
-    });
-    tween.onComplete(() => (isMorphing = false));
-    tween.play();
+  const showItem = (index: number = null) => {
+    if (currentShape) {
+      currentShape.getItem().removeFromParent();
+    }
+    if (index === null) {
+      index = (shapeIndex + 1) % paths.length;
+      shapeIndex = index;
+    }
+    const nextShape = shapes[index];
+    objGroup.add(nextShape.getItem());
+    currentShape = nextShape;
   };
 
-  const onClickCanvas = () => {
-    if (isMorphing) return;
-    shapeIndex++;
-    if (shapeIndex >= shapes.length) shapeIndex = 0;
-    morphParticles(shapes[shapeIndex].getVertices());
-  };
+  const onClickCanvas = () => showItem();
   canvas.addEventListener("click", onClickCanvas);
   //
   let animationRequest: number;
@@ -174,16 +157,33 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
 
 class ShapeVertices {
   private readonly vertices: number[] = [];
+  private group: THREE.Group = new THREE.Group();
 
   constructor(path: string, onLoadComplete: () => void) {
     const loader = new OBJLoader();
     loader.load(path, (obj) => {
       const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
-      const geom = mesh.geometry;
-      const arr = geom.getAttribute("position").array;
-      for (let i = 0; i < arr.length; i++) {
-        this.vertices.push(arr[i]);
-      }
+      const wireframe = new THREE.WireframeGeometry(mesh.geometry);
+      const line = new THREE.LineSegments(wireframe);
+      const mat: LineBasicMaterial = line.material as LineBasicMaterial;
+      mat.linewidth = 1;
+      mat.depthTest = false;
+      mat.opacity = 0.3;
+      mat.color = new THREE.Color("#f1acbc");
+      mat.transparent = true;
+      mat.blending = THREE.AdditiveBlending;
+      this.group.add(line);
+      // //
+      const pointGeom = mesh.geometry.clone();
+      const pointMat = new THREE.PointsMaterial();
+      pointMat.color.setHex(0xffffff);
+      pointMat.size = 1.5;
+      pointMat.depthTest = false;
+      mat.transparent = true;
+      mat.blending = THREE.AdditiveBlending;
+      const points = new THREE.Points(pointGeom, pointMat);
+      this.group.add(points);
+
       onLoadComplete();
     });
   }
@@ -195,5 +195,9 @@ class ShapeVertices {
     while (this.vertices.length <= until) {
       this.vertices.push(0);
     }
+  }
+
+  getItem(): THREE.Group {
+    return this.group;
   }
 }
