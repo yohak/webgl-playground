@@ -14,9 +14,9 @@ import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
 
-export type ThreeParticles05bProps = {};
+export type ThreeParticles05cProps = {};
 
-export const ThreeParticles05b: FC<ThreeParticles05bProps> = ({}) => {
+export const ThreeParticles05c: FC<ThreeParticles05cProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -154,7 +154,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     const originalPositions = particleGeom.getAttribute("position").array;
     let newPositions: number[];
     const obj = { percent: 0 };
-    const tween = Tween24.tween(obj, 1, Ease24._4_QuartInOut, { percent: 1 });
+    const tween = Tween24.tween(obj, 1, Ease24._6_ExpoInOut, { percent: 1 });
     tween.onUpdate(() => {
       newPositions = targetPositions.map((v, i) =>
         valueBetween(originalPositions[i], v, obj.percent)
@@ -173,7 +173,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     Tween24.serial(
       Tween24.func(() => hideItem(shapeIndex)),
       Tween24.func(() => morphParticles(morphTarget)),
-      Tween24.func(() => showItem(nextIndex)).delay(0.7),
+      Tween24.func(() => showItem(nextIndex)).delay(0.5),
       Tween24.func(() => {
         isMorphing = false;
         shapeIndex = nextIndex;
