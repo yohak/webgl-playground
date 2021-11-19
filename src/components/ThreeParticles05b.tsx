@@ -131,7 +131,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const showItem = (index: number) => {
     const wire = shapes[index].getItem();
     const prop = { opacity: 0 };
-    const tween = Tween24.tween(prop, 0.7, Ease24._4_QuartOut, { opacity: lineOpacity });
+    const tween = Tween24.tween(prop, 1, Ease24._4_QuartOut, { opacity: lineOpacity });
     tween.onUpdate(() => {
       (wire.material as LineBasicMaterial).opacity = prop.opacity;
     });
@@ -141,7 +141,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const hideItem = (index: number) => {
     const wire = shapes[index].getItem();
     const prop = { opacity: lineOpacity };
-    const tween = Tween24.tween(prop, 0.5, Ease24._4_QuartOut, { opacity: 0 });
+    const tween = Tween24.tween(prop, 0.7, Ease24._4_QuartOut, { opacity: 0 });
     tween.onUpdate(() => {
       (wire.material as LineBasicMaterial).opacity = prop.opacity;
     });
