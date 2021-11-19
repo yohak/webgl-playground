@@ -123,7 +123,10 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     objGroup.add(particles);
     //
     showItem(0);
-    morphParticles(shapes[0].getVertices());
+    particleGeom.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(shapes[0].getVertices(), 3)
+    );
   };
   const shapes: ShapeVertices[] = paths.map((p) => new ShapeVertices(p, onLoadItem));
   const lineOpacity = 0.3;
@@ -131,7 +134,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const showItem = (index: number) => {
     const wire = shapes[index].getItem();
     const prop = { opacity: 0 };
-    const tween = Tween24.tween(prop, 1, Ease24._4_QuartOut, { opacity: lineOpacity });
+    const tween = Tween24.tween(prop, 1, Ease24._4_QuartOut, { opacity: lineOpacity, scale: 1 });
     tween.onUpdate(() => {
       (wire.material as LineBasicMaterial).opacity = prop.opacity;
     });
