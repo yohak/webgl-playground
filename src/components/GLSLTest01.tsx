@@ -7,9 +7,9 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import frag from "../shader/fragment.glsl";
 import vert from "../shader/vertex.glsl";
 
-export type GLSLPlane01Props = {};
+export type GLSLTest01Props = {};
 
-export const GLSLPlane01: FC<GLSLPlane01Props> = ({}) => {
+export const GLSLTest01: FC<GLSLTest01Props> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
