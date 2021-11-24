@@ -6,7 +6,6 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import frag from "../shader/04.frag";
 import vert from "../shader/04.vert";
-import { Tween24 } from "tween24";
 
 export type GLSLTest04Props = {};
 
