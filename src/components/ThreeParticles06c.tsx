@@ -1,5 +1,6 @@
 import { backgroundImages } from "polished";
 import React, { FC, useEffect, useRef } from "react";
+import SimplexNoise from "simplex-noise";
 import * as THREE from "three";
 import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
@@ -15,7 +16,6 @@ import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
 import frag from "../shader/three06a.frag";
 import vert from "../shader/three06a.vert";
-import SimplexNoise from "simplex-noise";
 
 export type ThreeParticles06cProps = {};
 
@@ -207,7 +207,6 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       const updated = shapes[shapeIndex].update(time);
       if (particleGeom) {
         const newPositions = fillArray(updated, 0, verticesCount);
-        console.log(newPositions.length);
         particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
       }
       //
@@ -278,7 +277,6 @@ class ShapeVertices {
       );
       line.geometry.setAttribute("seed", new THREE.BufferAttribute(seed, 1));
       line.geometry.setAttribute("originalPosition", position.clone());
-      console.log(geom);
       onLoadComplete();
     });
   }

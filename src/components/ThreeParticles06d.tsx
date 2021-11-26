@@ -1,5 +1,6 @@
-import { backgroundImages } from "polished";
+import { css } from "@emotion/react";
 import React, { FC, useEffect, useRef } from "react";
+import SimplexNoise from "simplex-noise";
 import * as THREE from "three";
 import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
@@ -13,12 +14,12 @@ import { Ease24, Tween24 } from "tween24";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
-import frag from "../shader/three06b.frag";
-import vert from "../shader/three06b.vert";
+import frag from "../shader/three06d.frag";
+import vert from "../shader/three06d.vert";
 
-export type ThreeParticles06bProps = {};
+export type ThreeParticles06dProps = {};
 
-export const ThreeParticles06b: FC<ThreeParticles06bProps> = ({}) => {
+export const ThreeParticles06d: FC<ThreeParticles06dProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -29,8 +30,25 @@ export const ThreeParticles06b: FC<ThreeParticles06bProps> = ({}) => {
       destroy();
     };
   }, []);
-  return <canvas ref={wrapperRef} style={backgroundImages(`linear-gradient(#FFFFFF, #000000)`)} />;
+  return <canvas ref={wrapperRef} css={bg} />;
 };
+
+const bg = css`
+  background-image: url("/assets/noise.png"), linear-gradient(109deg, #6464d2, #ed3b64);
+  background-size: auto, 400% 400%;
+  animation: AnimationName 20s ease infinite;
+  @keyframes AnimationName {
+    0% {
+      background-position: 0 0, 92% 0%;
+    }
+    50% {
+      background-position: 0 0, 9% 100%;
+    }
+    100% {
+      background-position: 0 0, 92% 0%;
+    }
+  }
+`;
 
 const init = (canvas: HTMLCanvasElement): (() => void) => {
   canvas.width = window.innerWidth;
@@ -40,11 +58,15 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const far = 10000;
   const aspect = 1;
   //
-  const renderer = new THREE.WebGLRenderer({ canvas });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+  renderer.clear();
   const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.aspect = canvas.width / canvas.height;
   camera.updateProjectionMatrix();
   const scene = new THREE.Scene();
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  raycaster.params.Points.threshold = 10;
   //
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
@@ -58,10 +80,10 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   });
   const copyPass = new ShaderPass(CopyShader);
 
-  composer.addPass(texturePass);
-  composer.addPass(renderPass);
-  composer.addPass(copyPass);
-  composer.addPass(bloomPass);
+  // composer.addPass(texturePass);
+  // composer.addPass(renderPass);
+  // composer.addPass(copyPass);
+  // composer.addPass(bloomPass);
   //
   const onResizeWindow = () => {
     const w = window.innerWidth;
@@ -89,6 +111,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
     targetRotationY = rangeMap([-1, 1], [75, -75], cursorX);
     targetRotationX = rangeMap([-1, 1], [15, -15], cursorY);
+    //
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   };
   document.addEventListener("mousemove", onMouseMove);
 
@@ -102,25 +127,13 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
 
   const paths: string[] = ["/assets/heart2.obj", "/assets/woman2.obj"];
   let particleGeom: THREE.BufferGeometry;
+  let particles: THREE.Points;
   let loadCount = 0;
   let shapeIndex: number = 0;
   let isMorphing: boolean = false;
   let time = 0;
+  let verticesCount = 0;
   const particleMat = new THREE.ShaderMaterial({
-    side: THREE.DoubleSide,
-    // wireframe: true,
-    fragmentShader: frag,
-    vertexShader: vert,
-    uniforms: {
-      time: { value: 0 },
-      color: { value: new THREE.Color(0xff00ff) },
-      point: { value: new THREE.Vector3() },
-    },
-    depthTest: false,
-  });
-  const lineMat = new THREE.ShaderMaterial({
-    // side: THREE.DoubleSide,
-    wireframe: true,
     fragmentShader: frag,
     vertexShader: vert,
     uniforms: {
@@ -129,22 +142,22 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       point: { value: new THREE.Vector3() },
     },
     transparent: true,
-    depthTest: false,
+    // depthTest: false,
   });
-  // const lineMat = new THREE.sha
   const onLoadItem = () => {
     loadCount++;
     if (loadCount < paths.length) return;
     //
     const maxPositions = Math.max(...shapes.map((r) => r.getVertices().length));
+    verticesCount = Math.max(...shapes.map((r) => r.getVertices().length));
     shapes.forEach((shape) => shape.fillVertices(maxPositions));
     particleGeom = new THREE.BufferGeometry();
     const positions: number[] = [];
     particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     // const particleMat = new THREE.PointsMaterial();
 
-    const particles = new THREE.Points(particleGeom, particleMat);
-    // console.log(particles);
+    particles = new THREE.Points(particleGeom, particleMat);
+    console.log(particles);
     objGroup.add(particles);
     //
     showItem(0);
@@ -153,7 +166,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       new THREE.Float32BufferAttribute(shapes[0].getVertices(), 3)
     );
   };
-  const shapes: ShapeVertices[] = paths.map((p) => new ShapeVertices(p, lineMat, onLoadItem));
+  const shapes: ShapeVertices[] = paths.map((p, i) => new ShapeVertices(p, i, onLoadItem));
   const lineOpacity = 0.3;
 
   const showItem = (index: number) => {
@@ -212,21 +225,22 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   //
   let animationRequest: number;
   const render = () => {
-    // renderer.render(scene, camera);
-    time += 0.1;
-    shapes[shapeIndex].update(time);
-    if (!isMorphing) {
-      particleMat.uniforms.time.value = time;
-      lineMat.uniforms.time.value = time;
+    time += 0.05;
+    if (!isMorphing && particles) {
+      raycaster.setFromCamera(pointer, camera);
+      const intersections = raycaster.intersectObjects([objGroup], true);
+      const updated = shapes[shapeIndex].update(time, intersections);
+      const newPositions = fillArray(updated, 0, verticesCount);
+      particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
     }
-    composer.render();
     if (objGroup) {
       const rotationY = radianToDegree(objGroup.rotation.y);
       const rotationX = radianToDegree(objGroup.rotation.x);
       objGroup.rotation.y = degreeToRadian(rotationY + (targetRotationY - rotationY) / 50);
       objGroup.rotation.x = degreeToRadian(rotationX + (targetRotationX - rotationX) / 50);
     }
-    //
+    // composer.render();
+    renderer.render(scene, camera);
     animationRequest = requestAnimationFrame(render);
   };
   animationRequest = requestAnimationFrame(render);
@@ -243,28 +257,52 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   };
 };
 
+const fillArray = <T extends any>(arr: T[], value: T, count: number): T[] => {
+  const result = [...arr];
+  while (result.length <= count) {
+    result.push(value);
+  }
+  return result;
+};
+
+const simplex = new SimplexNoise("seed");
+
 class ShapeVertices {
   private readonly vertices: number[] = [];
-  private mesh: THREE.Mesh;
+  private wire: THREE.LineSegments;
+  private shapeIndex: number;
 
-  constructor(path: string, lineMat: THREE.ShaderMaterial, onLoadComplete: () => void) {
+  constructor(path: string, index: number, onLoadComplete: () => void) {
+    this.shapeIndex = index;
     const loader = new OBJLoader();
     loader.load(path, (obj) => {
       const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
-      mesh.material = lineMat;
-      this.mesh = mesh;
+      const wireframe = new THREE.WireframeGeometry(mesh.geometry);
+      const line = new THREE.LineSegments(wireframe);
+      const mat: LineBasicMaterial = line.material as LineBasicMaterial;
+      mesh.geometry.attributes.position.needsUpdate = true;
+      mat.linewidth = 1;
+      mat.depthTest = false;
+      mat.opacity = 0;
+      mat.color = new THREE.Color("#f1acbc");
+      mat.transparent = true;
+      mat.blending = THREE.AdditiveBlending;
+      this.wire = line;
       //
-      const geom = mesh.geometry;
-      const arr = geom.getAttribute("position").array;
+      const geom = line.geometry;
+      const position = line.geometry.getAttribute("position");
+      const arr = position.array;
       for (let i = 0; i < arr.length; i++) {
         this.vertices.push(arr[i]);
       }
-
+      const seed: Float32Array = new Float32Array(arr.length / 3).map((r, i) =>
+        simplex.noise3D(position.getX(i), position.getY(i), position.getZ(i))
+      );
+      line.geometry.setAttribute("seed", new THREE.BufferAttribute(seed, 1));
+      line.geometry.setAttribute("originalPosition", position.clone());
       onLoadComplete();
     });
   }
-
-  update(time: number) {}
 
   getVertices() {
     return [...this.vertices];
@@ -276,7 +314,44 @@ class ShapeVertices {
     }
   }
 
-  getItem(): THREE.Mesh {
-    return this.mesh;
+  getItem(): THREE.LineSegments {
+    return this.wire;
+  }
+
+  update(time: number, intersection: THREE.Intersection[]): number[] {
+    if (!this.wire) return;
+    const actualPosition = this.wire.geometry.getAttribute("position");
+    const originalPosition = this.wire.geometry.getAttribute("originalPosition");
+    const seed = this.wire.geometry.getAttribute("seed");
+    const newPositions = [];
+    const points = intersection.map((r) => r.point);
+    // console.log(points);
+    // }
+    for (let i = 0; i < originalPosition.array.length; i += 3) {
+      const currentPosition: THREE.Vector3 = new THREE.Vector3(
+        originalPosition.array[i],
+        originalPosition.array[i + 1],
+        originalPosition.array[i + 2]
+      );
+      const minDistance = Math.min(...points.map((p) => p.distanceTo(currentPosition)));
+      const index = i / 3;
+      // const isTouched = points.includes(index);
+      // const isTouched = minDistance <= 20;
+      const isTouched = false;
+      const extraY = Math.sin(time * 0.8 + originalPosition.array[i] / 60) * 1.5;
+      const extraX = Math.sin(time * 1.2 + originalPosition.array[i + 1] / 20) * 0.8;
+      if (this.shapeIndex === 0) {
+        newPositions[i] = originalPosition.array[i];
+        newPositions[i + 1] = originalPosition.array[i + 1] + extraY;
+      } else {
+        newPositions[i] = originalPosition.array[i] + extraX;
+        newPositions[i + 1] = originalPosition.array[i + 1];
+      }
+      newPositions[i + 2] = originalPosition.array[i + 2];
+    }
+    this.wire.geometry.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
+    return newPositions;
   }
 }
+
+const findPoints = (target: THREE.Vector3, candidate: THREE.Vector3[]) => {};
