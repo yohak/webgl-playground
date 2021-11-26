@@ -31,6 +31,7 @@
     "react-custom-scrollbars-2": "^4.4.0",
     "react-dom": "17.0.1",
     "recoil": "^0.2.0",
+    "simplex-noise": "^3.0.0",
     "three": "^0.132.2",
     "tweakpane": "^3.0.5",
     "tween24": "^0.9.11",

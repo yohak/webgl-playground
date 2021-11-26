@@ -1,7 +1,7 @@
 import { backgroundImages } from "polished";
 import React, { FC, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { BufferGeometry, LineBasicMaterial } from "three";
+import { LineBasicMaterial } from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -15,10 +15,11 @@ import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import { valueBetween } from "yohak-tools/dist/geom/value-between";
 import frag from "../shader/three06a.frag";
 import vert from "../shader/three06a.vert";
+import SimplexNoise from "simplex-noise";
 
-export type ThreeParticles06aProps = {};
+export type ThreeParticles06cProps = {};
 
-export const ThreeParticles06a: FC<ThreeParticles06aProps> = ({}) => {
+export const ThreeParticles06c: FC<ThreeParticles06cProps> = ({}) => {
   const wrapperRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -106,9 +107,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   let shapeIndex: number = 0;
   let isMorphing: boolean = false;
   let time = 0;
+  let verticesCount = 0;
   const particleMat = new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
-    // wireframe: true,
     fragmentShader: frag,
     vertexShader: vert,
     uniforms: {
@@ -116,25 +117,18 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       color: { value: new THREE.Color(0xff00ff) },
       point: { value: new THREE.Vector3() },
     },
+    // transparent: true,
     depthTest: false,
   });
-  // const lineMat = new THREE.sha
   const onLoadItem = () => {
     loadCount++;
     if (loadCount < paths.length) return;
     //
     const maxPositions = Math.max(...shapes.map((r) => r.getVertices().length));
+    verticesCount = Math.max(...shapes.map((r) => r.getVertices().length));
     shapes.forEach((shape) => shape.fillVertices(maxPositions));
     particleGeom = new THREE.BufferGeometry();
     const positions: number[] = [];
-    const r = 10;
-    for (let i = 0; i < maxPositions / 3; i++) {
-      positions.push(
-        Math.random() * r - r / 2,
-        Math.random() * r - r / 2,
-        Math.random() * r - r / 2
-      );
-    }
     particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     // const particleMat = new THREE.PointsMaterial();
 
@@ -209,7 +203,16 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const render = () => {
     // renderer.render(scene, camera);
     time += 0.05;
-    particleMat.uniforms.time.value = time;
+    if (!isMorphing) {
+      const updated = shapes[shapeIndex].update(time);
+      if (particleGeom) {
+        const newPositions = fillArray(updated, 0, verticesCount);
+        console.log(newPositions.length);
+        particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
+      }
+      //
+    }
+
     composer.render();
     if (objGroup) {
       const rotationY = radianToDegree(objGroup.rotation.y);
@@ -234,32 +237,28 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   };
 };
 
+const fillArray = <T extends any>(arr: T[], value: T, count: number): T[] => {
+  const result = [...arr];
+  while (result.length <= count) {
+    result.push(value);
+  }
+  return result;
+};
+
+const simplex = new SimplexNoise("seed");
+
 class ShapeVertices {
   private readonly vertices: number[] = [];
-  private group: THREE.Group = new THREE.Group();
   private wire: THREE.LineSegments;
 
   constructor(path: string, onLoadComplete: () => void) {
-    const lineMat = new THREE.ShaderMaterial({
-      side: THREE.DoubleSide,
-      wireframe: true,
-      fragmentShader: frag,
-      vertexShader: vert,
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new THREE.Color(0xff00ff) },
-        point: { value: new THREE.Vector3() },
-      },
-      depthTest: false,
-    });
-
     const loader = new OBJLoader();
     loader.load(path, (obj) => {
       const mesh: THREE.Mesh = obj.children[0] as THREE.Mesh;
       const wireframe = new THREE.WireframeGeometry(mesh.geometry);
-      // const line = new THREE.Mesh(wireframe, lineMat);
       const line = new THREE.LineSegments(wireframe);
       const mat: LineBasicMaterial = line.material as LineBasicMaterial;
+      mesh.geometry.attributes.position.needsUpdate = true;
       mat.linewidth = 1;
       mat.depthTest = false;
       mat.opacity = 0;
@@ -268,12 +267,18 @@ class ShapeVertices {
       mat.blending = THREE.AdditiveBlending;
       this.wire = line;
       //
-      const geom = mesh.geometry;
-      const arr = geom.getAttribute("position").array;
+      const geom = line.geometry;
+      const position = line.geometry.getAttribute("position");
+      const arr = position.array;
       for (let i = 0; i < arr.length; i++) {
         this.vertices.push(arr[i]);
       }
-
+      const seed: Float32Array = new Float32Array(arr.length / 3).map((r, i) =>
+        simplex.noise3D(position.getX(i), position.getY(i), position.getZ(i))
+      );
+      line.geometry.setAttribute("seed", new THREE.BufferAttribute(seed, 1));
+      line.geometry.setAttribute("originalPosition", position.clone());
+      console.log(geom);
       onLoadComplete();
     });
   }
@@ -290,5 +295,21 @@ class ShapeVertices {
 
   getItem(): THREE.LineSegments {
     return this.wire;
+  }
+
+  update(time: number): number[] {
+    if (!this.wire) return;
+    // if (time % 0.5 !== 0) return;
+    const originalPosition = this.wire.geometry.getAttribute("originalPosition");
+    const seed = this.wire.geometry.getAttribute("seed");
+    const newPositions = [];
+    for (let i = 0; i < originalPosition.array.length; i += 3) {
+      const extraY = Math.sin((time * (seed.array[i / 3] + 1)) / 2) * 0.9;
+      newPositions[i] = originalPosition.array[i];
+      newPositions[i + 1] = originalPosition.array[i + 1] + extraY;
+      newPositions[i + 2] = originalPosition.array[i + 2];
+    }
+    this.wire.geometry.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
+    return newPositions;
   }
 }

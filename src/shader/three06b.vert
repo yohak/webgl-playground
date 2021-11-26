@@ -88,13 +88,13 @@ void main() {
   vAlpha = 0.1;
 //  vAlpha = 0.;
   vec3 newPosition = position;
-//  float t = time * 0.02;
-//  float noise = cnoise(10.*vec3(position.x + t, position.y + t, position.z + t));
+  float t = time * 0.02;
+  float noise = cnoise(10.*vec3(position.x + t, position.y + t, position.z + t));
   //  float dist = distance(position, point);
   //  float touchArea = max(0.3 - dist, 0.);
   //  newPosition += normal * touchArea * 0.6;
   //    newPosition += normal * noise * 0.2;
-//  newPosition.y += 4.*sin(noise + t) - 2.;
+  newPosition.y += 6.*sin(noise + t) - 3.;
 
   gl_PointSize = 4.;
   float aX = abs(position.x);
