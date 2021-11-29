@@ -51,6 +51,7 @@ const bg = css`
     }
   }
 `;
+
 const RAYCAST_DISTANCE = 0.1;
 const easing = BezierEasing(0.5, 0, 0.8, 1);
 const init = (canvas: HTMLCanvasElement): (() => void) => {
@@ -112,8 +113,8 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   const onMouseMove = (e: MouseEvent) => {
     cursorX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
     cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-    targetRotationY = rangeMap([-1, 1], [75, -75], cursorX);
-    targetRotationX = rangeMap([-1, 1], [15, -15], cursorY);
+    targetRotationY = rangeMap([-1, 1], [15, -15], cursorX);
+    targetRotationX = rangeMap([-1, 1], [10, -10], cursorY);
     //
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -385,8 +386,8 @@ class ShapeVertices {
         originalPosition.array[i + 1],
         originalPosition.array[i + 2]
       );
-      const extraY = Math.sin(time * 0.8 + originalPosition.array[i] / 60) * 1.5;
-      const extraX = Math.sin(time * 1.2 + originalPosition.array[i + 1] / 20) * 0.8;
+      const extraY = Math.sin(time * 1.4 + originalPosition.array[i] / 40) * 2.5;
+      const extraX = Math.sin(time * 1.2 + originalPosition.array[i + 1] / 20) * 2.3;
       if (this.shapeIndex === 0) {
         newPositions[i] = originalPosition.array[i];
         newPositions[i + 1] = originalPosition.array[i + 1] + extraY;
