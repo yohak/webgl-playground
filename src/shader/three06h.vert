@@ -166,14 +166,16 @@ void main() {
   float z = newPosition.z;
   float t = uTime;
   float w = uWavePower;
+  float modY = 3.;
+  float modNoise = 2.;
 
   if (uMorphProgress == 0.){
     float ty1 = radians(mix(t / 20., noise(t/10.), 0.30) * 360.);
     float ty2 = radians(mix(t / 30., noise(t/16.), 0.10) * 360. + 90.);
-    float noiseX = (cnoise(vec4(x, y, z, t * 0.2)) * 3.)-1.5 * w;
-    float noiseY = (cnoise(vec4(y, z, x, t * 0.2)) * 3.)-1.5 * w;
-    float noiseZ = (cnoise(vec4(z, x, y, t * 0.2)) * 3.)-1.5 * w;
-    float extraY = sin(ty1 + ty2 + x / 40.) * 6. * w;
+    float noiseX = (cnoise(vec4(x, y, z, t * 0.2)) * modNoise)-modNoise * 0.5 * w;
+    float noiseY = (cnoise(vec4(y, z, x, t * 0.2)) * modNoise)-modNoise * 0.5 * w;
+    float noiseZ = (cnoise(vec4(z, x, y, t * 0.2)) * modNoise)-modNoise * 0.5 * w;
+    float extraY = (sin(ty1 + ty2 + x / 40.) * modY) - modY * 0.5 * w;
     newPosition.y += extraY + noiseY;
     newPosition.x += noiseX;
     newPosition.z += noiseZ;
