@@ -161,11 +161,22 @@ float noise(float p){
 
 void main() {
   vec3 newPosition = position;
+  float x = newPosition.x;
+  float y = newPosition.y;
+  float z = newPosition.z;
+  float t = uTime;
+  float w = uWavePower;
 
   if (uMorphProgress == 0.){
-    float t = radians(mix(uTime / 8., noise(uTime/3.), 0.15) * 360.);
-    float extraY = sin(t + newPosition.x / 40.) * 6. * uWavePower;
-    newPosition.y += extraY;
+    float ty1 = radians(mix(t / 20., noise(t/10.), 0.30) * 360.);
+    float ty2 = radians(mix(t / 30., noise(t/16.), 0.10) * 360. + 90.);
+    float noiseX = (cnoise(vec4(x, y, z, t * 0.2)) * 3.)-1.5 * w;
+    float noiseY = (cnoise(vec4(y, z, x, t * 0.2)) * 3.)-1.5 * w;
+    float noiseZ = (cnoise(vec4(z, x, y, t * 0.2)) * 3.)-1.5 * w;
+    float extraY = sin(ty1 + ty2 + x / 40.) * 6. * w;
+    newPosition.y += extraY + noiseY;
+    newPosition.x += noiseX;
+    newPosition.z += noiseZ;
     //
     float myDistance = 9999.;
     float myPower =0.;
@@ -185,10 +196,10 @@ void main() {
       float normalX = myNormal.x * -1. * distanceFactor;
       float normalY = myNormal.y * -1. * distanceFactor;
       float normalZ = myNormal.z * -1. * distanceFactor;
-      float noiseWave = sin(radians(mix(uTime / 4., noise(uTime/3.), 0.1) * 360. + 90.));
-      float noiseX = cnoise(vec4(position.x, position.y, position.z, uTime / 8.)) * myPower  * 10. * noiseWave;
-      float noiseY = cnoise(vec4(position.y, position.z, position.x, uTime / 8.)) * myPower  * 10. * noiseWave;
-      float noiseZ = cnoise(vec4(position.z, position.x, position.y, uTime / 8.)) * myPower  * 10. * noiseWave;
+      float noiseWave = sin(radians(mix(t / 4., noise(t/3.), 0.1) * 360. + 90.));
+      float noiseX = cnoise(vec4(x, y, z, t / 8.)) * myPower  * 10. * noiseWave;
+      float noiseY = cnoise(vec4(y, z, x, t / 8.)) * myPower  * 10. * noiseWave;
+      float noiseZ = cnoise(vec4(z, x, y, t / 8.)) * myPower  * 10. * noiseWave;
       newPosition.x += mix(normalX, noiseX, 0.4);
       newPosition.y += mix(normalY, noiseY, 0.4);
       newPosition.z += mix(normalZ, noiseZ, 0.4);

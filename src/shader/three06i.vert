@@ -161,9 +161,10 @@ void main() {
   vec3 newPosition = position;
 
   if (uMorphProgress == 0.){
-    float ty = radians(mix(uTime / 8. , noise(uTime/3.), 0.15) * 360.);
+    float ty1 = radians(mix(uTime / 20. , noise(uTime/10.), 0.30) * 360.);
+    float ty2 = radians(mix(uTime / 30. , noise(uTime/16.), 0.10) * 360. + 90.);
     float tx = radians(mix(uTime / 4. , noise(uTime/3.), 0.15) * 360.);
-    float extraY = sin(ty + newPosition.x / 40. ) * 6. * uWavePower;
+    float extraY = sin(ty1 + newPosition.x / 40. + ty2 ) * 4. * uWavePower;
     float extraX = sin(tx + newPosition.y / 20.) * 3. * uWavePower * uTouchPower;
 //    float extraY = sin(t + newPosition.x / 40. * (1. + uTouchPower/3.)) * 6. * uWavePower * (1. + uTouchPower);
 
