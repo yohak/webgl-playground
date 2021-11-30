@@ -8,7 +8,6 @@ import { Pane } from "tweakpane";
 import { Ease24, Tween24 } from "tween24";
 import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
-import { TouchTexture } from "./TouchTexture";
 import frag from "../shader/three07a.frag";
 import vert from "../shader/three07a.vert";
 import { fillAttribute, getPointsOfFace } from "../utils/three-utils";
@@ -45,7 +44,7 @@ const bg = css`
     }
   }
 `;
-const easing = BezierEasing(0.5, 0, 0.8, 1);
+const easing = BezierEasing(0.5, 0, 0.6, 1);
 const uniforms: {
   uTime: { value: number };
   uColor: { value: THREE.Color };
@@ -59,6 +58,7 @@ const uniforms: {
   uParams: {
     value: {
       waveHeight: number;
+      waveScale: number;
       noiseHeight: number;
       waveFreq: number;
       noiseFreq: number;
@@ -68,6 +68,7 @@ const uniforms: {
       touchNoiseHeight: number;
       touchNoiseMix: number;
       touchWaveFreq: number;
+      //
     };
   };
 } = {
@@ -83,6 +84,7 @@ const uniforms: {
   uParams: {
     value: {
       waveHeight: 3,
+      waveScale: 2,
       noiseHeight: 2,
       waveFreq: 5,
       noiseFreq: 20,
@@ -95,6 +97,18 @@ const uniforms: {
     },
   },
 };
+const threeParams: {
+  rotationY: number;
+  rotationX: number;
+  rotationBrake: number;
+  touchSpeed: number;
+} = {
+  touchSpeed: 6,
+  rotationY: 15,
+  rotationX: 8,
+  rotationBrake: 50,
+};
+
 const particleMat = new THREE.ShaderMaterial({
   side: THREE.DoubleSide,
   // wireframe: true,
@@ -136,24 +150,17 @@ const setupScene = (canvas: HTMLCanvasElement) => {
   camera.position.z = 200;
   camera.position.y = 40;
   camera.lookAt(objGroup.position);
-
-  return { camera, scene, renderer, objGroup };
-};
-
-const initHitArea = (w: number, h: number, container: THREE.Object3D, camera: THREE.Camera) => {
+  //
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2(-1, -1);
-  const touch = new TouchTexture();
-  return { raycaster, pointer };
+
+  return { camera, scene, renderer, objGroup, raycaster, pointer };
 };
 
 const init = (canvas: HTMLCanvasElement): (() => void) => {
   const pane = initPane();
-  const { camera, scene, renderer, objGroup } = setupScene(canvas);
-  //
+  const { camera, scene, renderer, objGroup, raycaster, pointer } = setupScene(canvas);
 
-  //
-  const { raycaster, pointer } = initHitArea(canvas.width, canvas.height, objGroup, camera);
   //
   const onResizeWindow = () => {
     const w = window.innerWidth;
@@ -171,10 +178,12 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   let targetRotationY = 0;
   let targetRotationX = 0;
   const onMouseMove = (e: MouseEvent) => {
+    const rX = threeParams.rotationX;
+    const rY = threeParams.rotationY;
     cursorX = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
     cursorY = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-    targetRotationY = rangeMap([-1, 1], [15, -15], cursorX);
-    targetRotationX = rangeMap([-1, 1], [8, -8], cursorY);
+    targetRotationY = rangeMap([-1, 1], [rY, rY * -1], cursorX);
+    targetRotationX = rangeMap([-1, 1], [rX, rX * -1], cursorY);
     //
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -240,61 +249,57 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       })
       .delay(0.1);
     waveTween.play();
-
     objGroup.add(wire);
     lineTween.play();
-  };
-  const hideItem = (index: number) => {
-    const wire = shapes[index].getItem();
-    objGroup.remove(guide);
-    const waveProp = { opacity: lineOpacity, wave: 1 };
-    const waveTween = Tween24.tween(waveProp, 0.6, Ease24._4_QuartOut, { wave: 0 });
-    waveTween.onUpdate(() => {
-      uniforms.uWavePower.value = waveProp.wave;
-    });
-    waveTween.play();
-    const lineProp = { opacity: lineOpacity };
-    const lineTween = Tween24.tween(lineProp, 0.6, Ease24._2_QuadOut, { opacity: 0 });
-    lineTween.onUpdate(() => {
-      uniforms.uLineOpacity.value = lineProp.opacity;
-    });
-    lineTween.onComplete(() => {
-      objGroup.remove(wire);
-    });
-    lineTween.play();
-  };
-  const morphParticles = (target: ShapeVertices) => {
-    const positionLength = particleGeom.getAttribute("position").array.length;
-    const targetPosition = fillAttribute(target.getVertexPositions(), positionLength);
-    particleGeom.setAttribute("targetPosition", targetPosition);
-    const obj = { percent: 0 };
-    const tween = Tween24.tween(obj, 1, Ease24._4_QuartInOut, { percent: 1 });
-    tween.onUpdate(() => {
-      uniforms.uMorphProgress.value = obj.percent;
-    });
-    tween.onComplete(() => {
-      isMorphing = false;
-      particleGeom.setAttribute("position", targetPosition);
-      particleGeom.setAttribute("normal", fillAttribute(target.getVertexNormals(), positionLength));
-      uniforms.uMorphProgress.value = 0;
-    });
-    tween.play();
   };
   const onClickCanvas = () => {
     if (isMorphing) return;
     //
-    isMorphing = true;
     const nextIndex = (shapeIndex + 1) % shapes.length;
     const morphTarget = shapes[nextIndex];
-    Tween24.serial(
-      Tween24.func(() => hideItem(shapeIndex)),
-      Tween24.func(() => morphParticles(morphTarget)),
-      Tween24.func(() => showItem(nextIndex)).delay(0.7),
-      Tween24.func(() => {
-        isMorphing = false;
-        shapeIndex = nextIndex;
-      })
-    ).play();
+    const params = {
+      morph: 0,
+      line: lineOpacity,
+      wave: 1,
+    };
+    const positionLength = particleGeom.getAttribute("position").array.length;
+    const targetPosition = fillAttribute(morphTarget.getVertexPositions(), positionLength);
+    //
+    const hideLine = Tween24.tween(params, 0.3, Ease24._Linear, { line: 0 });
+    const showLine = Tween24.tween(params, 1, Ease24._2_QuadOut, { line: lineOpacity });
+    const reduceWave = Tween24.tween(params, 0.6, Ease24._4_QuartOut, { wave: 0 });
+    const addWave = Tween24.tween(params, 1, Ease24._2_QuadInOut, { wave: 1 });
+    const morph = Tween24.tween(params, 1, Ease24._4_QuartInOut, { morph: 1 });
+    hideLine.onUpdate(() => (uniforms.uLineOpacity.value = params.line));
+    hideLine.onComplete(() => objGroup.remove(shapes[shapeIndex].getItem()));
+    showLine.onInit(() => objGroup.add(shapes[nextIndex].getItem()));
+    showLine.onUpdate(() => (uniforms.uLineOpacity.value = params.line));
+    reduceWave.onUpdate(() => (uniforms.uWavePower.value = params.wave));
+    addWave.onUpdate(() => (uniforms.uWavePower.value = params.wave));
+    morph.onUpdate(() => (uniforms.uMorphProgress.value = params.morph));
+    morph.onInit(() => particleGeom.setAttribute("targetPosition", targetPosition));
+    morph.onComplete(() => {
+      particleGeom.setAttribute("position", targetPosition);
+      uniforms.uMorphProgress.value = 0;
+    });
+
+    const seq = Tween24.parallel(
+      Tween24.serial(hideLine, showLine),
+      Tween24.serial(reduceWave, addWave.delay(0.3)),
+      morph
+    );
+    seq.onInit(() => {
+      isMorphing = true;
+      touches = [];
+      objGroup.remove(guide);
+    });
+    seq.onComplete(() => {
+      shapeIndex = nextIndex;
+      isMorphing = false;
+      guide = shapes[nextIndex].getGuide();
+      objGroup.add(guide);
+    });
+    seq.play();
   };
   canvas.addEventListener("click", onClickCanvas);
   //
@@ -306,7 +311,8 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       raycaster.setFromCamera(pointer, camera);
       const intersections = raycaster.intersectObject(guide);
       const intersection = intersections[0];
-      touches.forEach((t) => (t.power = Math.max(t.power - 0.04, 0)));
+      const touchSpeed = threeParams.touchSpeed / 100;
+      touches.forEach((t) => (t.power = Math.max(t.power - touchSpeed, 0)));
       if (intersection) {
         getPointsOfFace(
           intersection.face,
@@ -315,9 +321,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
           // console.log(p, intersections);
           const foundTouch = touches.find((t) => t.point.distanceTo(p) === 0);
           if (foundTouch) {
-            foundTouch.power = Math.min(1, foundTouch.power + 0.03 + 0.07);
+            foundTouch.power = Math.min(1, foundTouch.power + touchSpeed * 1.8);
           } else {
-            touches.push({ point: p, power: 0.03, normal: intersection.face.normal });
+            touches.push({ point: p, power: touchSpeed, normal: intersection.face.normal });
           }
         });
       }
@@ -332,8 +338,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     if (objGroup) {
       const rotationY = radianToDegree(objGroup.rotation.y);
       const rotationX = radianToDegree(objGroup.rotation.x);
-      objGroup.rotation.y = degreeToRadian(rotationY + (targetRotationY - rotationY) / 50);
-      objGroup.rotation.x = degreeToRadian(rotationX + (targetRotationX - rotationX) / 50);
+      const brake = threeParams.rotationBrake;
+      objGroup.rotation.y = degreeToRadian(rotationY + (targetRotationY - rotationY) / brake);
+      objGroup.rotation.x = degreeToRadian(rotationX + (targetRotationX - rotationX) / brake);
     }
     renderer.render(scene, camera);
     //
@@ -358,24 +365,37 @@ const initPane = (): Pane => {
   const pane = new Pane();
   const f1 = pane.addFolder({ title: "idle" });
   f1.addInput(uniforms.uParams.value, "waveHeight", { min: 0, max: 100 });
-  f1.addInput(uniforms.uParams.value, "waveFreq", { min: 0, max: 100 });
+  f1.addInput(uniforms.uParams.value, "waveScale", { min: 0, max: 10 });
+  f1.addInput(uniforms.uParams.value, "waveFreq", { min: 0, max: 30 });
   f1.addInput(uniforms.uParams.value, "noiseHeight", { min: 0, max: 100 });
   f1.addInput(uniforms.uParams.value, "noiseFreq", { min: 0, max: 100 });
   const f2 = pane.addFolder({ title: "touch" });
+  f2.addInput(threeParams, "touchSpeed", { min: 0, max: 20, label: "speed" });
   f2.addInput(uniforms.uParams.value, "touchDistance", { min: 0, max: 300, label: "distance" });
   f2.addInput(uniforms.uParams.value, "touchNormalHeight", {
     min: 0,
-    max: 100,
+    max: 200,
     label: "normalHeight",
   });
   f2.addInput(uniforms.uParams.value, "touchNoiseHeight", {
     min: 0,
-    max: 100,
+    max: 200,
     label: "noiseHeight",
   });
   f2.addInput(uniforms.uParams.value, "touchNoiseFreq", { min: 0, max: 100, label: "noiseFreq" });
   f2.addInput(uniforms.uParams.value, "touchNoiseMix", { min: 0, max: 100, label: "noiseMix" });
   f2.addInput(uniforms.uParams.value, "touchWaveFreq", { min: 0, max: 100, label: "waveFreq" });
+  const f3 = pane.addFolder({ title: "object" });
+  f3.addInput(threeParams, "rotationY", { min: 0, max: 90 });
+  f3.addInput(threeParams, "rotationX", { min: 0, max: 90 });
+  f3.addInput(threeParams, "rotationBrake", { min: 1, max: 200 });
+  //
+  const copyButton = pane.addButton({ title: "COPY PARAMS" });
+  copyButton.on("click", () => {
+    navigator.clipboard.writeText(JSON.stringify(pane.exportPreset())).then(() => {
+      window.alert("copied!");
+    });
+  });
   return pane;
 };
 
@@ -395,7 +415,6 @@ class ShapeVertices {
     loader.load(path, (obj) => {
       this.originalMesh = obj.children[0] as THREE.Mesh;
       this.originalMesh.geometry.computeVertexNormals();
-      console.log(this.originalMesh);
       this.mesh = this.originalMesh.clone();
       this.mesh.material = lineMat;
       this.guide = this.originalMesh.clone();

@@ -4,6 +4,7 @@ attribute float alpha;
 attribute vec3 targetPosition;
 struct Params {
   float waveHeight;
+  float waveScale;
   float noiseHeight;
   float waveFreq;
   float noiseFreq;
@@ -179,17 +180,18 @@ void main() {
   float z = newPosition.z;
   float t = uTime;
   float p = uWavePower;
-//  float waveHeight = 0.3;
-//  float noiseHeight = 2.;
-//  float waveFreq = 5. * 0.01 *  t;
-//  float noiseFreq = 20. * 0.01 * t;
-//  float touchNoiseFreq = 12.5 * 0.01 * t;
-//  float touchDistance = 50.;
-//  float touchNormalHeight = 70.;
-//  float touchNoiseHeight = 10.;
-//  float touchNoiseMix = 40. * 0.01;
-//  float touchWaveFreq = 25. * 0.01 * t;
+  //  float waveHeight = 0.3;
+  //  float noiseHeight = 2.;
+  //  float waveFreq = 5. * 0.01 *  t;
+  //  float noiseFreq = 20. * 0.01 * t;
+  //  float touchNoiseFreq = 12.5 * 0.01 * t;
+  //  float touchDistance = 50.;
+  //  float touchNormalHeight = 70.;
+  //  float touchNoiseHeight = 10.;
+  //  float touchNoiseMix = 40. * 0.01;
+  //  float touchWaveFreq = 25. * 0.01 * t;
   float waveHeight = uParams.waveHeight;
+  float waveWidh = uParams.waveScale * 0.01;
   float noiseHeight = uParams.noiseHeight;
   float waveFreq = uParams.waveFreq * 0.01 *  t;
   float noiseFreq = uParams.noiseFreq * 0.01 * t;
@@ -200,21 +202,22 @@ void main() {
   float touchNoiseMix = uParams.touchNoiseMix * 0.01;
   float touchWaveFreq = uParams.touchWaveFreq * 0.01 * t;
 
-//  if (uMorphProgress == 0.){
-    float ty1 = radians(waveFreq * 360.);
-    float noiseX = ((cnoise(vec4(x, y, z, noiseFreq)) * noiseHeight)-(noiseHeight * 0.5)) * p;
-    float noiseY = ((cnoise(vec4(y, z, x, noiseFreq)) * noiseHeight)-(noiseHeight * 0.5)) * p;
-    float noiseZ = ((cnoise(vec4(z, x, y, noiseFreq)) * noiseHeight)-(noiseHeight * 0.5)) * p;
-    float extraY = ((sin(ty1 + x * 0.02) * waveHeight) - (waveHeight * 0.5)) * p;
-    newPosition.y += extraY + noiseY;
-    newPosition.x += noiseX;
-    newPosition.z += noiseZ;
-    //
-    float myDistance = 9999.;
-    float myPower =0.;
-    float minDistance = touchDistance;
-    vec3 myNormal = vec3(0, 0, 0);
-    for (int i = 0; i< 64; i += 1){
+  //  if (uMorphProgress == 0.){
+  float ty1 = radians(waveFreq * 360.);
+  float noiseX = ((cnoise(vec4(x, y, z, noiseFreq)) * noiseHeight)) * p;
+  float noiseY = ((cnoise(vec4(y, z, x, noiseFreq)) * noiseHeight)) * p;
+  float noiseZ = ((cnoise(vec4(z, x, y, noiseFreq)) * noiseHeight)) * p;
+  float extraY = ((sin(ty1 + x * waveWidh) * waveHeight) - (waveHeight * 0.5)) * p;
+  newPosition.y += extraY + noiseY;
+  newPosition.x += noiseX;
+  newPosition.z += noiseZ;
+  //
+  float myDistance = 9999.;
+  float myPower =0.;
+  float minDistance = touchDistance;
+  vec3 myNormal = vec3(0, 0, 0);
+  for (int i = 0; i< 64; i += 1){
+    if (uTouchPoints[i] != vec3(0., 0., 0.)){
       float pDistance = distance(uTouchPoints[i], position);
       if (pDistance < myDistance){
         myDistance = pDistance;
@@ -222,21 +225,22 @@ void main() {
         myNormal = uTouchNormals[i];
       }
     }
-    if (myDistance < minDistance){
-      float distanceBase = (minDistance - myDistance) / minDistance;
-      float distanceFactor =  distanceBase * distanceBase * myPower * touchNormalHeight;
-      float normalX = myNormal.x * -1. * distanceFactor;
-      float normalY = myNormal.y * -1. * distanceFactor;
-      float normalZ = myNormal.z * -1. * distanceFactor;
-      float noiseWave = sin(radians(mix(touchWaveFreq, noise(0.), 0.4) * 360.));
-      float noiseX = cnoise(vec4(x, y, z, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
-      float noiseY = cnoise(vec4(y, z, x, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
-      float noiseZ = cnoise(vec4(z, x, y, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
-      newPosition.x += mix(normalX, noiseX, touchNoiseMix);
-      newPosition.y += mix(normalY, noiseY, touchNoiseMix);
-      newPosition.z += mix(normalZ, noiseZ, touchNoiseMix);
-    }
-//  }
+  }
+  if (myDistance < minDistance){
+    float distanceBase = (minDistance - myDistance) / minDistance;
+    float distanceFactor =  distanceBase * distanceBase * myPower * touchNormalHeight;
+    float normalX = myNormal.x * -1. * distanceFactor;
+    float normalY = myNormal.y * -1. * distanceFactor;
+    float normalZ = myNormal.z * -1. * distanceFactor;
+    float noiseWave = sin(radians(mix(touchWaveFreq, noise(0.), 0.4) * 360.));
+    float noiseX = cnoise(vec4(x, y, z, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
+    float noiseY = cnoise(vec4(y, z, x, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
+    float noiseZ = cnoise(vec4(z, x, y, touchNoiseFreq)) * touchNoiseHeight * noiseWave * distanceBase;
+    newPosition.x += mix(normalX, noiseX, touchNoiseMix);
+    newPosition.y += mix(normalY, noiseY, touchNoiseMix);
+    newPosition.z += mix(normalZ, noiseZ, touchNoiseMix);
+  }
+  //  }
 
   if (uIsPoint && uMorphProgress > 0.){
     float x = mix(newPosition.x, targetPosition.x, uMorphProgress);
