@@ -11,6 +11,7 @@ import { TouchTexture } from "./TouchTexture";
 import frag from "../shader/three07a.frag";
 import vert from "../shader/three07a.vert";
 import { fillAttribute, getPointsOfFace } from "../utils/three-utils";
+
 export type ThreeParticles07aProps = {};
 
 export const ThreeParticles07a: FC<ThreeParticles07aProps> = ({}) => {
@@ -54,6 +55,20 @@ const uniforms: {
   uTouchPoints: { value: THREE.Vector3[] };
   uTouchNormals: { value: THREE.Vector3[] };
   uTouchPowers: { value: number[] };
+  uParams: {
+    value: {
+      waveBase: number;
+      noiseBase: number;
+      waveFreq: number;
+      noiseFreq: number;
+      touchNoiseFreq: number;
+      touchDistance: number;
+      touchBase: number;
+      touchNoiseBase: number;
+      touchNoiseMix: number;
+      touchWaveFreq: number;
+    };
+  };
 } = {
   uTime: { value: 0 },
   uColor: { value: new THREE.Color(0xff00ff) },
@@ -64,6 +79,20 @@ const uniforms: {
   uTouchPoints: { value: [] },
   uTouchNormals: { value: [] },
   uTouchPowers: { value: [] },
+  uParams: {
+    value: {
+      waveBase: 3,
+      noiseBase: 2,
+      waveFreq: 5,
+      noiseFreq: 20,
+      touchNoiseFreq: 12.5,
+      touchDistance: 50,
+      touchBase: 70,
+      touchNoiseBase: 10,
+      touchNoiseMix: 40,
+      touchWaveFreq: 25,
+    },
+  },
 };
 const particleMat = new THREE.ShaderMaterial({
   side: THREE.DoubleSide,
