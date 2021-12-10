@@ -10,7 +10,7 @@ import { rangeMap } from "yohak-tools";
 import { degreeToRadian, radianToDegree } from "yohak-tools/dist/geom/angles";
 import frag from "../shader/three07c.frag";
 import vert from "../shader/three07c.vert";
-import { fillAttribute, getPointsOfFace } from "../utils/three-utils";
+import { fillAttribute, getPointsOfFace, setRandomPoints } from "../utils/three-utils";
 
 export type ThreeParticles07cProps = {};
 
@@ -147,10 +147,9 @@ const setupScene = (canvas: HTMLCanvasElement) => {
   //
   const objGroup: THREE.Group = new THREE.Group();
   scene.add(objGroup);
-  camera.position.z = 200;
+  camera.position.z = 300;
   camera.position.y = 40;
   camera.lookAt(objGroup.position);
-  threeParams.cameraTilt = radianToDegree(camera.rotation.z);
   //
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2(-1, -1);
@@ -206,6 +205,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
   let touches: TouchInfo[] = [];
 
   // const lineMat = new THREE.sha
+  let randomPoints: THREE.Float32BufferAttribute;
   const onLoadItem = () => {
     loadCount++;
     if (loadCount < objectPaths.length) return;
@@ -213,6 +213,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     particleGeom = new THREE.BufferGeometry();
     const maxPointCount = Math.max(...shapes.map((r) => r.getVertexPositions().array.length));
     const positions: Float32Array = new Float32Array(maxPointCount);
+    randomPoints = setRandomPoints(maxPointCount, 1000);
     particleGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
 
     const particles = new THREE.Points(particleGeom, particleMat);
@@ -225,6 +226,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     );
     particleGeom.setAttribute("normal", fillAttribute(shapes[0].getVertexNormals(), maxPointCount));
   };
+
   const shapes: ShapeVertices[] = objectPaths.map((p) => new ShapeVertices(p, onLoadItem));
   const lineOpacity = 0.07;
 
@@ -262,6 +264,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       morph: 0,
       line: lineOpacity,
       wave: 1,
+      rotation: radianToDegree(objGroup.rotation.y) % 360,
     };
     const positionLength = particleGeom.getAttribute("position").array.length;
     const targetPosition = fillAttribute(morphTarget.getVertexPositions(), positionLength);
@@ -270,24 +273,35 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
     const showLine = Tween24.tween(params, 1, Ease24._2_QuadOut, { line: lineOpacity });
     const reduceWave = Tween24.tween(params, 0.6, Ease24._4_QuartOut, { wave: 0 });
     const addWave = Tween24.tween(params, 1, Ease24._2_QuadInOut, { wave: 1 });
-    const morph = Tween24.tween(params, 1, Ease24._4_QuartInOut, { morph: 1 });
+    const morph1 = Tween24.tween(params, 1.2, Ease24._6_ExpoInOut, { morph: 1 });
+    const morph2 = Tween24.tween(params, 0.7, Ease24._4_QuartInOut, { morph: 1 });
+    const rotate1 = Tween24.tween(params, 2, Ease24._6_ExpoInOut, { rotation: 720 });
     hideLine.onUpdate(() => (uniforms.uLineOpacity.value = params.line));
     hideLine.onComplete(() => objGroup.remove(shapes[shapeIndex].getItem()));
     showLine.onInit(() => objGroup.add(shapes[nextIndex].getItem()));
     showLine.onUpdate(() => (uniforms.uLineOpacity.value = params.line));
     reduceWave.onUpdate(() => (uniforms.uWavePower.value = params.wave));
     addWave.onUpdate(() => (uniforms.uWavePower.value = params.wave));
-    morph.onUpdate(() => (uniforms.uMorphProgress.value = params.morph));
-    morph.onInit(() => particleGeom.setAttribute("targetPosition", targetPosition));
-    morph.onComplete(() => {
+    morph1.onUpdate(() => (uniforms.uMorphProgress.value = params.morph));
+    morph1.onInit(() => particleGeom.setAttribute("targetPosition", randomPoints));
+    morph1.onComplete(() => {
+      particleGeom.setAttribute("position", randomPoints);
+      particleGeom.setAttribute("targetPosition", targetPosition);
+      uniforms.uMorphProgress.value = 0;
+      params.morph = 0;
+    });
+    morph2.onUpdate(() => (uniforms.uMorphProgress.value = params.morph));
+    morph2.onComplete(() => {
       particleGeom.setAttribute("position", targetPosition);
       uniforms.uMorphProgress.value = 0;
     });
+    rotate1.onUpdate(() => (objGroup.rotation.y = degreeToRadian(params.rotation)));
 
     const seq = Tween24.parallel(
-      Tween24.serial(hideLine, showLine),
+      Tween24.serial(hideLine, showLine.delay(1.8)),
       Tween24.serial(reduceWave, addWave.delay(0.3)),
-      morph
+      Tween24.serial(morph1, morph2.delay(0.7)),
+      Tween24.serial(rotate1)
     );
     seq.onInit(() => {
       isMorphing = true;
@@ -295,6 +309,7 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       objGroup.remove(guide);
     });
     seq.onComplete(() => {
+      objGroup.rotation.y = 0;
       shapeIndex = nextIndex;
       isMorphing = false;
       guide = shapes[nextIndex].getGuide();
@@ -342,7 +357,9 @@ const init = (canvas: HTMLCanvasElement): (() => void) => {
       const brake = threeParams.rotationBrake;
       // objGroup.rotation.y = degreeToRadian(rotationY + (targetRotationY - rotationY) / brake);
       objGroup.rotation.x = degreeToRadian(rotationX + (targetRotationX - rotationX) / brake);
-      objGroup.rotation.y += degreeToRadian(threeParams.rotationY / 100);
+      if (!isMorphing) {
+        objGroup.rotation.y += degreeToRadian(threeParams.rotationY / 100);
+      }
     }
     renderer.render(scene, camera);
     //

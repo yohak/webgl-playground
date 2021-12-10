@@ -26,3 +26,11 @@ export const getPointsOfFace = (
     getPointFromBuffer(face.c, points),
   ];
 };
+
+export const setRandomPoints = (maxPointCount: number, radius: number = 700) => {
+  const arr = new Float32Array(maxPointCount);
+  for (let i = 0; i < maxPointCount; i++) {
+    arr[i] = Math.random() * radius - radius / 2;
+  }
+  return new THREE.Float32BufferAttribute(arr, 3);
+};
