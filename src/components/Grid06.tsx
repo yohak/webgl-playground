@@ -10,7 +10,7 @@ const colors = gridPanels;
 const arr = new Array(colors.length * colors.length).fill(null);
 
 export const Grid06: FC<Grid01Props> = ({}) => {
-  const [rotate, setRotate] = useState(false);
+  const [rotate, setRotate] = useState(true);
   const onClickPanel = () => {
     setRotate((prevState) => !prevState);
   };
