@@ -36,6 +36,7 @@
     "three": "^0.132.2",
     "tweakpane": "^3.0.5",
     "tween24": "^0.9.11",
+    "yohak-react-tools": "^0.0.1",
     "yohak-tools": "^0.1.11"
   },
   "devDependencies": {
